@@ -322,7 +322,8 @@ def apply_anime_filter(image_path):
     # Get Replicate API token from environment
     replicate_token = os.getenv('REPLICATE_API_TOKEN')
     if not replicate_token:
-        raise Exception("REPLICATE_API_TOKEN not found in environment")
+        print("[ERROR] REPLICATE_API_TOKEN not found in environment variables")
+        raise Exception("REPLICATE_API_TOKEN environment variable is required. Please set it in Zeabur dashboard.")
 
     # Configure Replicate client
     os.environ['REPLICATE_API_TOKEN'] = replicate_token
@@ -443,7 +444,11 @@ def generate_model():
         print(f"{'='*60}")
 
         # 1. Configuration - Use environment variable
-        MESHY_API_KEY = os.environ.get('MESHY_API_KEY', 'msy_PQDikf08TR21s4wHdyyW6GPssscVZe4arcmB')
+        MESHY_API_KEY = os.environ.get('MESHY_API_KEY')
+        if not MESHY_API_KEY:
+            print("[ERROR] MESHY_API_KEY not found in environment variables", flush=True)
+            raise Exception("MESHY_API_KEY environment variable is required. Please set it in Zeabur dashboard.")
+
         MESHY_HEADERS = {'Authorization': f'Bearer {MESHY_API_KEY}'}
 
         print(f"🚀 Submitting to Meshy (Refine Mode - 4K ULTRA QUALITY)...", flush=True)
@@ -539,10 +544,17 @@ def health_check():
     return jsonify({'status': 'ok', 'api_key_loaded': bool(API_KEY)})
 
 if __name__ == '__main__':
+    # Get port from environment variable (Zeabur sets this)
+    port = int(os.environ.get('PORT', 8080))
+
     print("=" * 50)
     print("[STARTING] Tripo 3D API Server")
     print("=" * 50)
-    print(f"[ADDRESS] http://localhost:8080")
-    print(f"[API KEY] {'Loaded' if API_KEY else 'Not found'}")
+    print(f"[PORT] {port}")
+    print(f"[HOST] 0.0.0.0")
+    print(f"[REPLICATE_API_TOKEN] {'Loaded' if os.getenv('REPLICATE_API_TOKEN') else 'NOT FOUND - WILL CRASH!'}")
+    print(f"[MESHY_API_KEY] {'Loaded' if os.getenv('MESHY_API_KEY') else 'NOT FOUND - WILL CRASH!'}")
     print("=" * 50)
-    app.run(host='0.0.0.0', port=8080, debug=True)
+
+    # Production mode for Zeabur (no debug mode in production)
+    app.run(host='0.0.0.0', port=port, debug=False)
