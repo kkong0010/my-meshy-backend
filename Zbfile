@@ -1,1 +1,1 @@
-default: python api.py
+default: python3 api.py
