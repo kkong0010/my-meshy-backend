@@ -385,7 +385,8 @@ def index():
     """Root endpoint - Shows server is alive"""
     return jsonify({
         'status': 'running',
-        'message': 'Tripo 3D API Server is running',
+        'version': 'v2.0-no-startup-tests',
+        'message': 'Server Active v2 - NO automatic API calls on startup',
         'endpoints': {
             'health': '/api/health',
             'generate': '/api/generate (POST)',
@@ -394,7 +395,8 @@ def index():
         'api_keys': {
             'replicate': bool(os.getenv('REPLICATE_API_TOKEN')),
             'meshy': bool(os.getenv('MESHY_API_KEY'))
-        }
+        },
+        'note': 'API calls ONLY happen when user clicks Generate button'
     })
 
 @app.route('/api/generate', methods=['POST'])
@@ -568,22 +570,29 @@ def send_static(path):
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Health check"""
-    return jsonify({'status': 'ok', 'api_key_loaded': bool(API_KEY)})
+    """Health check - v2"""
+    return jsonify({
+        'status': 'Server Active v2',
+        'version': 'v2.0-no-startup-tests',
+        'replicate_api_token': 'loaded' if os.getenv('REPLICATE_API_TOKEN') else 'missing',
+        'meshy_api_key': 'loaded' if os.getenv('MESHY_API_KEY') else 'missing',
+        'note': 'NO startup tests - API calls only on user request'
+    })
 
 if __name__ == '__main__':
     # Get port from environment variable (Zeabur sets this)
     port = int(os.environ.get('PORT', 8080))
 
-    print("=" * 50)
-    print("[STARTING] Tripo 3D API Server")
-    print("=" * 50)
+    print("=" * 60)
+    print("[STARTING] Tripo 3D API Server v2.0-no-startup-tests")
+    print("=" * 60)
     print(f"[PORT] {port}")
     print(f"[HOST] 0.0.0.0")
     print(f"[REPLICATE_API_TOKEN] {'✓ Loaded' if os.getenv('REPLICATE_API_TOKEN') else '⚠ Not set (will fail on generate)'}")
     print(f"[MESHY_API_KEY] {'✓ Loaded' if os.getenv('MESHY_API_KEY') else '⚠ Not set (will fail on generate)'}")
-    print("[STATUS] Server starting... API calls only happen on user request")
-    print("=" * 50)
+    print("[IMPORTANT] NO STARTUP TESTS - Server will NOT call any APIs on startup")
+    print("[IMPORTANT] API calls ONLY happen when user clicks Generate button")
+    print("=" * 60)
 
     # Production mode for Zeabur (no debug mode in production)
     # Server will start even without API keys - errors only happen when user clicks Generate
