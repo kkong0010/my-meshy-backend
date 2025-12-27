@@ -232,7 +232,11 @@ const Tripo3D = () => {
         });
       }, 1000); // Slower interval for longer wait time
 
-      const response = await axios.post('/api/generate', formData, {
+      // CRITICAL: Use absolute URL to Zeabur backend
+      const API_URL = 'https://my-meshy-api.zeabur.app/api/generate';
+      console.log('[DEBUG] Requesting URL:', API_URL);
+
+      const response = await axios.post(API_URL, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -275,7 +279,24 @@ const Tripo3D = () => {
     } catch (err) {
       console.error('[ERROR] Generation failed:', err);
       console.error('[ERROR] Error details:', err.response?.data);
-      setError(err.response?.data?.error || err.message || 'Generation failed, please try again');
+
+      // Create detailed error message
+      let errorMessage = 'Generation failed, please try again';
+      if (err.response) {
+        // Server responded with error
+        errorMessage = `Server Error (${err.response.status}): ${err.response.data?.error || err.message}`;
+      } else if (err.request) {
+        // Request was made but no response
+        errorMessage = `Network Error: Cannot connect to backend at https://my-meshy-api.zeabur.app. Please check if backend is running.`;
+      } else {
+        // Something else happened
+        errorMessage = `Error: ${err.message}`;
+      }
+
+      setError(errorMessage);
+
+      // Show alert for visibility
+      alert(`❌ Generation Failed\n\n${errorMessage}\n\nPlease check the browser console (F12) for more details.`);
     } finally {
       setIsGenerating(false);
     }

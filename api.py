@@ -20,7 +20,15 @@ os.environ.pop("http_proxy", None)
 os.environ.pop("https_proxy", None)
 
 app = Flask(__name__, static_folder='static')
-CORS(app)  # Enable CORS
+# Enable CORS for all origins (required for deployed frontend)
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"],
+        "supports_credentials": True
+    }
+})
 
 # === Configuration ===
 UPLOAD_FOLDER = 'static/uploads'
@@ -28,27 +36,34 @@ MODEL_FOLDER = 'static/models'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(MODEL_FOLDER, exist_ok=True)
 
-# === Read API Key ===
+# === Read API Key (Environment Variable + File Fallback) ===
 API_KEY = None
 API_KEY_FILE = None
-for key_file in ["api_key.txt", "api_key"]:
-    key_path = os.path.join(os.path.dirname(__file__), key_file)
-    if os.path.exists(key_path):
-        with open(key_path, "r") as f:
-            API_KEY = f.read().strip()
-        API_KEY_FILE = key_file
-        # Print first 4 chars for verification
-        key_prefix = API_KEY[:4] if len(API_KEY) >= 4 else "***"
-        masked_key = f"{API_KEY[:8]}...{API_KEY[-6:]}" if len(API_KEY) > 14 else "***"
-        print(f"[SUCCESS] API Key loaded from: {key_file}")
-        print(f"[KEY PREFIX] First 4 chars: {key_prefix}")
-        print(f"[KEY PREVIEW] {masked_key}")
-        break
 
-if not API_KEY:
-    print("[ERROR] API Key file not found (tried: api_key.txt, api_key)")
-    print(f"[PATH] Current directory: {os.getcwd()}")
-    exit()
+# Try environment variable first (for deployment)
+API_KEY = os.environ.get('REPLICATE_API_TOKEN') or os.environ.get('REPLICATE_API_KEY')
+if API_KEY:
+    print("[SUCCESS] API Key loaded from environment variable")
+else:
+    # Fallback to file (for local development)
+    for key_file in ["api_key.txt", "api_key"]:
+        key_path = os.path.join(os.path.dirname(__file__), key_file)
+        if os.path.exists(key_path):
+            with open(key_path, "r") as f:
+                API_KEY = f.read().strip()
+            API_KEY_FILE = key_file
+            print(f"[SUCCESS] API Key loaded from: {key_file}")
+            break
+
+if API_KEY:
+    # Print masked key for verification
+    key_prefix = API_KEY[:4] if len(API_KEY) >= 4 else "***"
+    masked_key = f"{API_KEY[:8]}...{API_KEY[-6:]}" if len(API_KEY) > 14 else "***"
+    print(f"[KEY PREFIX] First 4 chars: {key_prefix}")
+    print(f"[KEY PREVIEW] {masked_key}")
+else:
+    print("[WARNING] API Key not found - set REPLICATE_API_TOKEN environment variable")
+    print("[WARNING] Server will start but generation will fail without API key")
 
 BASE_URL = "https://api.tripo3d.ai/v2/openapi"
 HEADERS = {"Authorization": f"Bearer {API_KEY}"}
@@ -427,8 +442,8 @@ def generate_model():
         print(f"[STAGE 2/2] MESHY AI - 3D Avatar → 3D Mesh")
         print(f"{'='*60}")
 
-        # 1. Configuration
-        MESHY_API_KEY = "msy_PQDikf08TR21s4wHdyyW6GPssscVZe4arcmB"
+        # 1. Configuration - Use environment variable
+        MESHY_API_KEY = os.environ.get('MESHY_API_KEY', 'msy_PQDikf08TR21s4wHdyyW6GPssscVZe4arcmB')
         MESHY_HEADERS = {'Authorization': f'Bearer {MESHY_API_KEY}'}
 
         print(f"🚀 Submitting to Meshy (Refine Mode - 4K ULTRA QUALITY)...", flush=True)
