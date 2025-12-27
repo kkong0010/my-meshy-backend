@@ -2,10 +2,15 @@
 Gunicorn configuration for Zeabur deployment
 """
 import os
-import multiprocessing
+import sys
 
-# Bind to PORT from environment (Zeabur sets this)
-bind = f"0.0.0.0:{os.environ.get('PORT', 8080)}"
+# CRITICAL: Read PORT from environment - Zeabur sets this dynamically
+port = os.environ.get('PORT', '8080')
+print(f"[DEBUG] PORT environment variable: {port}", file=sys.stderr, flush=True)
+print(f"[DEBUG] All env vars: {list(os.environ.keys())}", file=sys.stderr, flush=True)
+
+# Bind to the port Zeabur assigned
+bind = f"0.0.0.0:{port}"
 
 # Worker configuration
 workers = 1  # Single worker to avoid memory issues
