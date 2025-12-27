@@ -33,8 +33,15 @@ CORS(app, resources={
 # === Configuration ===
 UPLOAD_FOLDER = 'static/uploads'
 MODEL_FOLDER = 'static/models'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(MODEL_FOLDER, exist_ok=True)
+
+# Create folders safely (don't crash if fails)
+try:
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    os.makedirs(MODEL_FOLDER, exist_ok=True)
+    print(f"[SUCCESS] Created/verified folders: {UPLOAD_FOLDER}, {MODEL_FOLDER}")
+except Exception as e:
+    print(f"[WARNING] Could not create folders: {e}")
+    print("[WARNING] Server will continue but may fail when saving files")
 
 # === Read API Key (Environment Variable + File Fallback) ===
 API_KEY = None
@@ -373,6 +380,23 @@ def apply_anime_filter(image_path):
 
 # === API Routes ===
 
+@app.route('/')
+def index():
+    """Root endpoint - Shows server is alive"""
+    return jsonify({
+        'status': 'running',
+        'message': 'Tripo 3D API Server is running',
+        'endpoints': {
+            'health': '/api/health',
+            'generate': '/api/generate (POST)',
+            'static': '/static/<path>'
+        },
+        'api_keys': {
+            'replicate': bool(os.getenv('REPLICATE_API_TOKEN')),
+            'meshy': bool(os.getenv('MESHY_API_KEY'))
+        }
+    })
+
 @app.route('/api/generate', methods=['POST'])
 def generate_model():
     """2-STAGE PIPELINE: Real Photo → Anime Drawing → 3D Model
@@ -529,14 +553,18 @@ def generate_model():
 @app.route('/static/<path:path>')
 def send_static(path):
     """Serve static files with proper CORS headers"""
-    # Determine mimetype for GLB files
-    mimetype = 'model/gltf-binary' if path.endswith('.glb') else None
-    response = send_from_directory('static', path, mimetype=mimetype)
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-    response.headers['Cache-Control'] = 'public, max-age=3600'
-    return response
+    try:
+        # Determine mimetype for GLB files
+        mimetype = 'model/gltf-binary' if path.endswith('.glb') else None
+        response = send_from_directory('static', path, mimetype=mimetype)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        response.headers['Cache-Control'] = 'public, max-age=3600'
+        return response
+    except Exception as e:
+        print(f"[ERROR] Static file error: {e}")
+        return jsonify({'error': f'File not found: {path}'}), 404
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -552,9 +580,15 @@ if __name__ == '__main__':
     print("=" * 50)
     print(f"[PORT] {port}")
     print(f"[HOST] 0.0.0.0")
-    print(f"[REPLICATE_API_TOKEN] {'Loaded' if os.getenv('REPLICATE_API_TOKEN') else 'NOT FOUND - WILL CRASH!'}")
-    print(f"[MESHY_API_KEY] {'Loaded' if os.getenv('MESHY_API_KEY') else 'NOT FOUND - WILL CRASH!'}")
+    print(f"[REPLICATE_API_TOKEN] {'✓ Loaded' if os.getenv('REPLICATE_API_TOKEN') else '⚠ Not set (will fail on generate)'}")
+    print(f"[MESHY_API_KEY] {'✓ Loaded' if os.getenv('MESHY_API_KEY') else '⚠ Not set (will fail on generate)'}")
+    print("[STATUS] Server starting... API calls only happen on user request")
     print("=" * 50)
 
     # Production mode for Zeabur (no debug mode in production)
-    app.run(host='0.0.0.0', port=port, debug=False)
+    # Server will start even without API keys - errors only happen when user clicks Generate
+    try:
+        app.run(host='0.0.0.0', port=port, debug=False)
+    except Exception as e:
+        print(f"[FATAL] Server failed to start: {e}")
+        # Don't exit - let container restart
