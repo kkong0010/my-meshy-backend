@@ -579,6 +579,66 @@ def health_check():
         'note': 'NO startup tests - API calls only on user request'
     })
 
+@app.route('/api/list-uploads', methods=['GET'])
+def list_uploads():
+    """List all uploaded images"""
+    try:
+        uploads = []
+        if os.path.exists(UPLOAD_FOLDER):
+            for filename in os.listdir(UPLOAD_FOLDER):
+                if filename != '.gitkeep' and not filename.startswith('.'):
+                    file_path = os.path.join(UPLOAD_FOLDER, filename)
+                    if os.path.isfile(file_path):
+                        file_stats = os.stat(file_path)
+                        uploads.append({
+                            'filename': filename,
+                            'url': f'/static/uploads/{filename}',
+                            'size': file_stats.st_size,
+                            'created': file_stats.st_ctime,
+                            'modified': file_stats.st_mtime
+                        })
+
+        # Sort by creation time (newest first)
+        uploads.sort(key=lambda x: x['created'], reverse=True)
+
+        return jsonify({
+            'success': True,
+            'count': len(uploads),
+            'uploads': uploads
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/list-models', methods=['GET'])
+def list_models():
+    """List all generated 3D models"""
+    try:
+        models = []
+        if os.path.exists(MODEL_FOLDER):
+            for filename in os.listdir(MODEL_FOLDER):
+                if filename != '.gitkeep' and not filename.startswith('.'):
+                    file_path = os.path.join(MODEL_FOLDER, filename)
+                    if os.path.isfile(file_path):
+                        file_stats = os.stat(file_path)
+                        models.append({
+                            'filename': filename,
+                            'url': f'/static/models/{filename}',
+                            'size': file_stats.st_size,
+                            'created': file_stats.st_ctime,
+                            'modified': file_stats.st_mtime
+                        })
+
+        # Sort by creation time (newest first)
+        models.sort(key=lambda x: x['created'], reverse=True)
+
+        return jsonify({
+            'success': True,
+            'count': len(models),
+            'models': models
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     # Get port from environment variable (Zeabur sets this)
     port = int(os.environ.get('PORT', 8080))
